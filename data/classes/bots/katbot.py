@@ -36,77 +36,12 @@ def deepcopy_ignore_surfaces(obj, memo=None):
     else:
         return copy.deepcopy(obj, memo)
     
-PIECE_SQUARE_TABLES = {
-    " ": [  # Pawn
-        [6,   6,   6,   6,   6,   6],
-        [5,   5,   5,   5,   5,   5],
-        [1,   1,   2,   2,   1,   1],
-        [0.5, 0.5, 1,   1,   0.5, 0.5],
-        [0,   0,   0.5, 0.5, 0,   0],
-        [0,   0,   0,   0,   0,   0]
-    ],
-    "N": [  # Knight
-        [-2, -1, -1, -1, -1, -2],
-        [-1,  0,  0.5, 0.5, 0, -1],
-        [-1,  0.5, 1, 1, 0.5, -1],
-        [-1,  0.5, 1, 1, 0.5, -1],
-        [-1,  0,  0.5, 0.5, 0, -1],
-        [-2, -1, -1, -1, -1, -2]
-    ],
-    # You can later add "B", "R", "S", "Q", "J", "K"
-    "B": [  # Bishop
-        [-2, -1, -1, -1, -1, -2],
-        [-1,  0,  0.5, 0.5, 0, -1],
-        [-1,  0.5, 1, 1, 0.5, -1],
-        [-1,  0.5, 1, 1, 0.5, -1],
-        [-1,  0,  0.5, 0.5, 0, -1],
-        [-2, -1, -1, -1, -1, -2]
-    ],
-    "R": [  # Rook
-        [1,   1,   2,   2,   1,   1],
-        [0.5, 1,   1,   1,   1,   0.5],
-        [0,  0,  0.5, 0.5, 0, 0],
-        [-1,  -0.5, -1, -1, -0.5, -1],
-        [-1,  -0.5, -1, -1, -0.5, -1],
-        [-1.5,   -1.5, -1.5, -1.5, -1.5, -5]
-    ],
-    "Q": [
-        [1,   1,   2,   2,   1,   1],
-        [0.5, 1,   1,   1,   1,   0.5],
-        [0,  0,  0.5, 0.5, 0, 0],
-        [5,  5, 5, 5, 5, -5],
-        [-1,  -0.5, -1, -1, -0.5, -1],
-        [-1.5,   -1.5, -1.5, -1.5, -1.5, -5]
-    ],
-    "S": [
-        [1,   1,   2,   2,   1,   1],
-        [0.5, 1,   1,   1,   1,   0.5],
-        [0,  0,  0.5, 0.5, 0, 0],
-        [5,  5, 5, 5, 5, -5],
-        [-1,  -0.5, -1, -1, -0.5, -1],
-        [-1.5,   -1.5, -1.5, -1.5, -1.5, -5]
-    ],
-    "J": [
-        [1,   1,   2,   2,   1,   1],
-        [0.5, 1,   1,   1,   1,   0.5],
-        [0,  0,  0.5, 0.5, 0, 0],
-        [5,  5, 5, 5, 5, -5],
-        [-1,  -0.5, -1, -1, -0.5, -1],
-        [-1.5,   -1.5, -1.5, -1.5, -1.5, -5]
-    ],
-    "K": [
-        [-5,   -5,   -5,   -5,   -5,   -5],
-        [-5,   -5,   -5,   -5,   -5,   -5],
-        [-5,   -5,   -5,   -5,   -5,   -5],
-        [-2,   -2,   -2,   -2,   -2,   -2],
-        [-1.5,   -1.5, -1.5, -1.5, -1.5, -5],
-        [0, 0, 0, 0, 0, 0]
-    ]
-   
 
-}
 
 class Bot:
+    """
+    A bot that makes random moves.
+    """
     def __init__(self):
         self.depth = 3
         self.time_limit_ms = 100  # 0.1 second in milliseconds
@@ -121,63 +56,28 @@ class Bot:
     '''
     def evaluate_board(self, side, board):
         SCORES_DICT = {
-            " ": 10,   # pawn
-            "N": 30,   # knight
-            "B": 30,   # bishop
-            "R": 50,   # rook
-            "S": 50,   # star
-            "Q": 90,   # queen
-            "J": 90,   # joker
-            "K": 10000  # king
+            " ": 1, # pawn
+            "N": 3, # knight
+            "B": 3, # bishop
+            "R": 5, # rook
+            "S": 5, # star
+            "Q": 9, # queen
+            "J": 9, # joker
+            "K": 100 # king
         }
-
-        board_state = board.get_board_state()
         evaluation = 0
-        side_prefix = 'w' if side == 'white' else 'b'
-        opponent_prefix = 'b' if side == 'white' else 'w'
-        king_pos = None
-
-        for row in range(6):
-            for col in range(6):
-                piece = board_state[row][col]
-                if piece == "":
-                    continue
-
-                color, piece_type = piece[0], piece[1]
-                value = SCORES_DICT.get(piece_type, 0)
-
-                # Apply positional bonus from PST if available
-                if piece_type in PIECE_SQUARE_TABLES:
-                    pst = PIECE_SQUARE_TABLES[piece_type]
-                    table_row = row if color == 'w' else 5 - row  # flip for black
-                    positional_bonus = pst[table_row][col]
-                    value += positional_bonus
-
-                if color == side_prefix:
-                    evaluation += value
-                    if piece_type == "K":
-                        king_pos = (row, col)
-                else:
-                    evaluation -= value
-
-        # King safety (friendly pieces near king)
-        if king_pos:
-            def count_friendly_near_king(pos, board_state, prefix):
-                count = 0
-                for dr in [-1, 0, 1]:
-                    for dc in [-1, 0, 1]:
-                        if dr == 0 and dc == 0:
-                            continue
-                        r, c = pos[0] + dr, pos[1] + dc
-                        if 0 <= r < 6 and 0 <= c < 6:
-                            p = board_state[r][c]
-                            if p != "" and p[0] == prefix:
-                                count += 1
-                return count
-
-            guards = count_friendly_near_king(king_pos, board_state, side_prefix)
-            evaluation += guards * 5  # Tune this value
-
+        board_state = board.get_board_state()
+        for x in board_state:
+            for y in x:
+                if y != "":
+                    piece = y
+                    piece_value = SCORES_DICT[piece[1]]
+                    if piece[0] == 'b' and side == 'black':
+                        evaluation += piece_value
+                    elif piece[0] == 'w' and side == 'white':
+                        evaluation += piece_value
+                    else:
+                        evaluation -= piece_value
         return evaluation
     '''
 
