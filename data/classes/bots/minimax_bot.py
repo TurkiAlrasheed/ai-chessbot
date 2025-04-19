@@ -2,6 +2,46 @@
 import copy
 import random
 
+import pygame
+
+
+
+def deepcopy_ignore_surfaces(obj, memo=None):
+    if memo is None:
+        memo = {}
+
+    if id(obj) in memo:
+        return memo[id(obj)]
+
+    if isinstance(obj, pygame.Surface):
+        return obj
+
+    if isinstance(obj, dict):
+        copied = {}
+        memo[id(obj)] = copied
+        for k, v in obj.items():
+            copied[deepcopy_ignore_surfaces(k, memo)] = deepcopy_ignore_surfaces(v, memo)
+        return copied
+
+    elif isinstance(obj, list):
+        copied = []
+        memo[id(obj)] = copied
+        for item in obj:
+            copied.append(deepcopy_ignore_surfaces(item, memo))
+        return copied
+
+    elif hasattr(obj, '__dict__'):
+        copied = obj.__class__.__new__(obj.__class__)
+        memo[id(obj)] = copied
+        for k, v in obj.__dict__.items():
+            setattr(copied, k, deepcopy_ignore_surfaces(v, memo))
+        return copied
+
+    else:
+        return copy.deepcopy(obj, memo)
+    
+
+
 class Bot:
     """
     This is a sample minimax bot that uses the minimax algorithm to choose the best move.
@@ -15,6 +55,7 @@ class Bot:
     """
     def __init__(self):
         self.depth = 1 ## Please set the depth <= 2 unless you are sure your bot runs within the time limit.
+    
 
     def get_possible_moves(self, side, board):
         return board.get_all_valid_moves(side)
@@ -45,7 +86,10 @@ class Bot:
                         evaluation -= piece_value
         return evaluation
     
- 
+    def simulate_move(self, board, start_pos, end_pos):
+        new_board = deepcopy_ignore_surfaces(board)
+        new_board.handle_move(start_pos, end_pos)
+        return new_board
     
     def minimax(self, board, side, depth, maximizing_player):
         if depth == 0 or board.is_in_checkmate(side):
@@ -84,29 +128,3 @@ class Bot:
     def move(self, side, board):
         best_move = self.get_best_move_minimax(board, side, self.depth)
         return best_move
-    
-
-    def simulate_move(self, board, start_pos, end_pos):
-        new_board = self.shallow_copy_board(board)
-        new_board.handle_move(start_pos, end_pos)
-        return new_board
-
-    def shallow_copy_board(self, board):
-        # Create a new empty board
-        new_board = board.__class__(board.width, board.height)
-
-        # Copy logical board state
-        # Depending on what your board actually stores, adjust the following lines:
-        if hasattr(board, 'board_state'):
-            new_board.board_state = [row[:] for row in board.board_state]
-
-        if hasattr(board, 'turn'):
-            new_board.turn = board.turn
-
-        if hasattr(board, 'halfmove_clock'):
-            new_board.halfmove_clock = board.halfmove_clock
-
-        # Copy any other relevant attributes your game logic depends on
-        # Avoid copying graphical objects like .sprites or .surfaces
-
-        return new_board
