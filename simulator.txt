@@ -10,7 +10,7 @@ Argument	Description	Default
 --simulations	Number of games to simulate	1
 
 Example:
-python simulator.py --bot1 random_bot --bot2 aggressive_bot --delay 300 --simulations 10
+python simulator.py --bot1 random_bot --bot2 minimax_bot --delay 300 --simulations 10
 
 Bot Requirements:
 
