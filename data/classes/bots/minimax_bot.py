@@ -45,10 +45,7 @@ class Bot:
                         evaluation -= piece_value
         return evaluation
     
-    def simulate_move(self, board, start_pos, end_pos):
-        new_board = copy.deepcopy(board)
-        new_board.handle_move(start_pos, end_pos)
-        return new_board
+ 
     
     def minimax(self, board, side, depth, maximizing_player):
         if depth == 0 or board.is_in_checkmate(side):
@@ -87,3 +84,29 @@ class Bot:
     def move(self, side, board):
         best_move = self.get_best_move_minimax(board, side, self.depth)
         return best_move
+    
+
+    def simulate_move(self, board, start_pos, end_pos):
+        new_board = self.shallow_copy_board(board)
+        new_board.handle_move(start_pos, end_pos)
+        return new_board
+
+    def shallow_copy_board(self, board):
+        # Create a new empty board
+        new_board = board.__class__(board.width, board.height)
+
+        # Copy logical board state
+        # Depending on what your board actually stores, adjust the following lines:
+        if hasattr(board, 'board_state'):
+            new_board.board_state = [row[:] for row in board.board_state]
+
+        if hasattr(board, 'turn'):
+            new_board.turn = board.turn
+
+        if hasattr(board, 'halfmove_clock'):
+            new_board.halfmove_clock = board.halfmove_clock
+
+        # Copy any other relevant attributes your game logic depends on
+        # Avoid copying graphical objects like .sprites or .surfaces
+
+        return new_board
