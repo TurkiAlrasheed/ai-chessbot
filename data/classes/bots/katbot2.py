@@ -40,7 +40,7 @@ def deepcopy_ignore_surfaces(obj, memo=None):
 
 class Bot:
     """
-    A bot that makes random moves.
+    A bot that bots.
     """
     def __init__(self):
         self.depth = 3
@@ -84,6 +84,9 @@ class Bot:
 
         evaluation = 0
         board_state = board.get_board_state()
+        my_king_position = None
+        opponent_pieces = []
+        my_pieces = []
 
         for row in range(6):
             for col in range(6):
@@ -99,23 +102,58 @@ class Bot:
                 score = value + 0.2 * bonus  # Slightly higher bonus scaling for tighter board
                 if color == 'w':
                     evaluation += score if side == 'white' else -score
+                    if type_char == "K":  # Track king position for safety evaluation
+                        my_king_position = (row, col)
+                    my_pieces.append((type_char, row, col))
                 elif color == 'b':
                     evaluation += score if side == 'black' else -score
+                    opponent_pieces.append((type_char, row, col))
+
+        # King Safety: Bonus for defended king, penalty for exposed king
+        if my_king_position:
+            king_row, king_col = my_king_position
+            defense_count = 0
+            for r in range(king_row - 1, king_row + 2):
+                for c in range(king_col - 1, king_col + 2):
+                    if 0 <= r < 6 and 0 <= c < 6:
+                        piece = board_state[r][c]
+                        if piece != "" and piece[0] == side[0]:  # Friendly piece
+                            defense_count += 1
+            evaluation += defense_count * 0.5  # Defended king is more valuable
+
+        # Piece Safety: Penalize pieces that are under threat
+        for piece, row, col in my_pieces:
+            is_safe = True
+            for r in range(row - 1, row + 2):
+                for c in range(col - 1, col + 2):
+                    if 0 <= r < 6 and 0 <= c < 6:
+                        opponent_piece = board_state[r][c]
+                        if opponent_piece != "" and opponent_piece[0] == self.opponent(side)[0]:
+                            is_safe = False
+            if not is_safe:
+                evaluation -= 2  # Penalize unsafe pieces
 
         # Mobility bonus
         my_moves = len(board.get_all_valid_moves(side))
         opp_moves = len(board.get_all_valid_moves(self.opponent(side)))
         evaluation += 0.1 * (my_moves - opp_moves)
 
-        '''
-        # Repetition penalty
-        state_hash = self.hash_board_state(board)
-        repeats = self.position_history.get(state_hash, 0)
-        if repeats >= 2:
-            evaluation -= 50
-        '''
+        # Pawn promotion potential
+        for row in range(6):
+            for col in range(6):
+                piece = board_state[row][col]
+                if piece == "":
+                    continue
+                color, type_char = piece[0], piece[1]
+                if type_char == " " and color == side[0]:  # Only check pawns
+                    # Assign higher value to pawns nearing promotion
+                    if side == 'white' and row > 2:
+                        evaluation += (6 - row) * 0.5
+                    elif side == 'black' and row < 3:
+                        evaluation += (3 - row) * 0.5
 
         return evaluation
+
 
     def simulate_move(self, board, start_pos, end_pos):
         new_board = deepcopy_ignore_surfaces(board)
@@ -175,7 +213,7 @@ class Bot:
         state_hash = self.hash_board_state(simulated_board)
         self.position_history[state_hash] = self.position_history.get(state_hash, 0) + 1
         '''
-
+        
         return best_move
 
 

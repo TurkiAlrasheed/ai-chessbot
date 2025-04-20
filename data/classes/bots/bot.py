@@ -121,21 +121,27 @@ class Bot:
     '''
     def evaluate_board(self, side, board):
         SCORES_DICT = {
-            " ": 10,   # pawn
-            "N": 30,   # knight
-            "B": 30,   # bishop
-            "R": 50,   # rook
-            "S": 50,   # star
-            "Q": 90,   # queen
-            "J": 90,   # joker
-            "K": 10000  # king
+            " ": 1,  # pawn
+            "N": 3,  # knight
+            "B": 3,  # bishop
+            "R": 5,  # rook
+            "S": 5,  # star
+            "Q": 9,  # queen
+            "J": 9,  # joker
+            "K": 100  # king
         }
 
-        board_state = board.get_board_state()
+        POSITION_BONUS = [
+            [0, 1, 2, 2, 1, 0],
+            [1, 2, 3, 3, 2, 1],
+            [2, 3, 4, 4, 3, 2],
+            [2, 3, 4, 4, 3, 2],
+            [1, 2, 3, 3, 2, 1],
+            [0, 1, 2, 2, 1, 0],
+        ]
+
         evaluation = 0
-        side_prefix = 'w' if side == 'white' else 'b'
-        opponent_prefix = 'b' if side == 'white' else 'w'
-        king_pos = None
+        board_state = board.get_board_state()
 
         for row in range(6):
             for col in range(6):
@@ -143,40 +149,21 @@ class Bot:
                 if piece == "":
                     continue
 
-                color, piece_type = piece[0], piece[1]
-                value = SCORES_DICT.get(piece_type, 0)
+                color, type_char = piece[0], piece[1]
+                value = SCORES_DICT.get(type_char, 0)
+                bonus = POSITION_BONUS[row][col]
 
-                # Apply positional bonus from PST if available
-                if piece_type in PIECE_SQUARE_TABLES:
-                    pst = PIECE_SQUARE_TABLES[piece_type]
-                    table_row = row if color == 'w' else 5 - row  # flip for black
-                    positional_bonus = pst[table_row][col]
-                    value += positional_bonus
+                # Apply score based on side
+                score = value + 0.2 * bonus  # Slightly higher bonus scaling for tighter board
+                if color == 'w':
+                    evaluation += score if side == 'white' else -score
+                elif color == 'b':
+                    evaluation += score if side == 'black' else -score
 
-                if color == side_prefix:
-                    evaluation += value
-                    if piece_type == "K":
-                        king_pos = (row, col)
-                else:
-                    evaluation -= value
-
-        # King safety (friendly pieces near king)
-        if king_pos:
-            def count_friendly_near_king(pos, board_state, prefix):
-                count = 0
-                for dr in [-1, 0, 1]:
-                    for dc in [-1, 0, 1]:
-                        if dr == 0 and dc == 0:
-                            continue
-                        r, c = pos[0] + dr, pos[1] + dc
-                        if 0 <= r < 6 and 0 <= c < 6:
-                            p = board_state[r][c]
-                            if p != "" and p[0] == prefix:
-                                count += 1
-                return count
-
-            guards = count_friendly_near_king(king_pos, board_state, side_prefix)
-            evaluation += guards * 5  # Tune this value
+        # Mobility bonus
+        my_moves = len(board.get_all_valid_moves(side))
+        opp_moves = len(board.get_all_valid_moves(self.opponent(side)))
+        evaluation += 0.1 * (my_moves - opp_moves)
 
         return evaluation
     '''
